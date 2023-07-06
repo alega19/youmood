@@ -28,7 +28,7 @@ async def index():
     return fastapi.responses.HTMLResponse(HTML)
 
 
-@app.get("/images")
+@app.get("/images/{channel_id}/{emotion}.jpg")
 async def images(channel_id: str, emotion: Emotion):
     filepath = pathlib.Path(__file__).parent / "images" / channel_id / (emotion.value + ".jpg")
     if filepath.exists():
@@ -71,9 +71,14 @@ HTML = """<!DOCTYPE html>
             table {
                 width: 100%;
                 border-collapse: collapse;
+                table-layout: fixed;
             }
             tr:nth-child(odd) {
                 background-color: #f0f0f0;
+            }
+            tr img {
+                width: 100%;
+                height: auto;
             }
         </style>
         <script>
@@ -133,7 +138,7 @@ HTML = """<!DOCTYPE html>
             
             function createEmotionNode(channel_id, emotion, value){
                 var node = document.createElement("td");
-                node.innerHTML = `<div>${(value * 100).toFixed(1)}%</div><div><img src="/images?channel_id=${channel_id}&emotion=${emotion}"></div>`;
+                node.innerHTML = `<div>${(value * 100).toFixed(1)}%</div><div><img src="/images/${channel_id}/${emotion}.jpg"></div>`;
                 return node;
             }
         </script>
