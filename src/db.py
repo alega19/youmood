@@ -11,6 +11,19 @@ import psycopg2.pool
 DSN = os.environ["DSN"]
 
 
+COLUMN_TO_LABEL = {
+    "angry": "Anger",
+    "contempt": "Contempt",
+    "disgust": "Disgust",
+    "fear": "Fear",
+    "happy": "Happiness",
+    "neutral": "Neutral",
+    "sad": "Sadness",
+    "surprise": "Surprise",
+}
+LABEL_TO_COLUMN = {label: column for column, label in COLUMN_TO_LABEL.items()}
+
+
 def register_dict_as_json():
     psycopg2.extensions.register_adapter(dict, psycopg2.extras.Json)
     psycopg2.extensions.register_adapter(list, psycopg2.extras.Json)

@@ -17,8 +17,9 @@ import pytube
 import pytube.exceptions
 import rmn
 import torch
-from hsemotion.facial_emotions import HSEmotionRecognizer
 import yoyo
+from hsemotion.facial_emotions import HSEmotionRecognizer
+from PIL import Image
 
 import db
 import logging_config
@@ -83,6 +84,7 @@ def get_video():
 
 
 def analyze_video(video):
+    label_to_max_score = defaultdict(float)
     face_detector = RMN()
     analyzer = HSEmotionRecognizer()
     results = []
@@ -99,7 +101,11 @@ def analyze_video(video):
                 logger.info("processed %s minutes for video(%s)", seconds // 60, video["id"])
             face_image = face_detector.find_face(frame)
             if face_image is not None:
-                label, _ = analyzer.predict_emotions(face_image)
+                label, scores = analyzer.predict_emotions(face_image, False)
+                score = scores.max().item()
+                if score >= label_to_max_score[label]:
+                    label_to_max_score[label] = score
+                    save_face(video["channel_id"], label, face_image)
                 results.append(label)
         frame_index += 1
     logger.info("analyzed video(%s): %s", video["id"], video["title"])
@@ -337,6 +343,14 @@ class RMN(rmn.RMN):
             if min(face_image.shape[:2]) >= 10:
                 return face_image
         return None
+
+
+def save_face(channel_id, label, image):
+    column = db.LABEL_TO_COLUMN[label]
+    filepath = pathlib.Path(__file__).parent / "images" / channel_id / (column + ".jpg")
+    filepath.parent.mkdir(parents=True, exist_ok=True)
+    Image.fromarray(image).save(filepath)
+    logger.info("saved %s face for channel-id=%s", label, channel_id)
 
 
 if __name__ == '__main__':
