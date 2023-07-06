@@ -1,6 +1,7 @@
 import contextlib
 import enum
 import os
+import pathlib
 from datetime import datetime, timezone
 
 import asyncpg
@@ -25,6 +26,15 @@ class Emotion(enum.Enum):
 @app.get("/")
 async def index():
     return fastapi.responses.HTMLResponse(HTML)
+
+
+@app.get("/images")
+async def images(channel_id: str, emotion: Emotion):
+    filepath = pathlib.Path(__file__).parent / "images" / channel_id / (emotion.value + ".jpg")
+    if filepath.exists():
+        return fastapi.responses.FileResponse(filepath)
+    else:
+        return fastapi.responses.Response(status_code=404)
 
 
 @app.get("/api")
@@ -60,6 +70,10 @@ HTML = """<!DOCTYPE html>
         <style>
             table {
                 width: 100%;
+                border-collapse: collapse;
+            }
+            tr:nth-child(odd) {
+                background-color: #f0f0f0;
             }
         </style>
         <script>
@@ -97,13 +111,13 @@ HTML = """<!DOCTYPE html>
                 var titleNode = createTitleNode(item.id, item.title);
                 rowNode.appendChild(titleNode);
 
-                rowNode.appendChild(createEmotionNode(item.angry));
-                rowNode.appendChild(createEmotionNode(item.disgust));
-                rowNode.appendChild(createEmotionNode(item.fear));
-                rowNode.appendChild(createEmotionNode(item.happy));
-                rowNode.appendChild(createEmotionNode(item.sad));
-                rowNode.appendChild(createEmotionNode(item.surprise));
-                rowNode.appendChild(createEmotionNode(item.contempt));
+                rowNode.appendChild(createEmotionNode(item.id, "angry", item.angry));
+                rowNode.appendChild(createEmotionNode(item.id, "disgust", item.disgust));
+                rowNode.appendChild(createEmotionNode(item.id, "fear", item.fear));
+                rowNode.appendChild(createEmotionNode(item.id, "happy", item.happy));
+                rowNode.appendChild(createEmotionNode(item.id, "sad", item.sad));
+                rowNode.appendChild(createEmotionNode(item.id, "surprise", item.surprise));
+                rowNode.appendChild(createEmotionNode(item.id, "contempt", item.contempt));
 
                 return rowNode;
             }
@@ -117,9 +131,9 @@ HTML = """<!DOCTYPE html>
                 return cellNode;
             }
             
-            function createEmotionNode(value){
+            function createEmotionNode(channel_id, emotion, value){
                 var node = document.createElement("td");
-                node.innerText = (value * 100).toFixed(1) + "%";
+                node.innerHTML = `<div>${(value * 100).toFixed(1)}%</div><div><img src="/images?channel_id=${channel_id}&emotion=${emotion}"></div>`;
                 return node;
             }
         </script>
