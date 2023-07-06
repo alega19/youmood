@@ -14,9 +14,7 @@ from datetime import datetime, timedelta, timezone
 
 import imageio.v3 as iio
 import pytube
-import pytube.cipher
 import pytube.exceptions
-import pytube.innertube
 import rmn
 import torch
 from hsemotion.facial_emotions import HSEmotionRecognizer
@@ -24,6 +22,7 @@ import yoyo
 
 import db
 import logging_config
+import pytube_patch
 import utils
 
 
@@ -33,9 +32,10 @@ GOOGLE_API_KEY = os.environ["GOOGLE_API_KEY"]
 PROCESSING_INTERVAL = timedelta(days=7)
 SYNC_INTERVAL = timedelta(days=1)
 
+pytube_patch.init()
+
 
 def main():
-    migrate()
     utils.start_thread(synchronize_channels)
     while True:
         video = get_video()
@@ -339,37 +339,6 @@ class RMN(rmn.RMN):
         return None
 
 
-def fixed_get_throttling_function_name(js):
-    function_patterns = [
-        r'a\.[a-zA-Z]\s*&&\s*\([a-z]\s*=\s*a\.get\("n"\)\)\s*&&.*?\|\|\s*([a-z]+)',
-        r'\([a-z]\s*=\s*([a-zA-Z0-9$]+)(\[\d+\])?\([a-z]\)',
-    ]
-    for pattern in function_patterns:
-        regex = re.compile(pattern)
-        function_match = regex.search(js)
-        if function_match:
-            if len(function_match.groups()) == 1:
-                return function_match.group(1)
-            idx = function_match.group(2)
-            if idx:
-                idx = idx.strip("[]")
-                array = re.search(
-                    r'var {nfunc}\s*=\s*(\[.+?\]);'.format(
-                        nfunc=re.escape(function_match.group(1))),
-                    js
-                )
-                if array:
-                    array = array.group(1).strip("[]").split(",")
-                    array = [x.strip() for x in array]
-                    return array[int(idx)]
-
-    raise pytube.exceptions.RegexMatchError(
-        caller="get_throttling_function_name", pattern="multiple"
-    )
-
-pytube.cipher.get_throttling_function_name = fixed_get_throttling_function_name
-
-
 if __name__ == '__main__':
     logging_config.apply()
     signal.signal(signal.SIGTERM, lambda *_: sys.exit())
@@ -377,6 +346,7 @@ if __name__ == '__main__':
     socket.setdefaulttimeout(600)
     db.register_dict_as_json()
     try:
+        migrate()
         main()
     except Exception as _error:
         logger.exception("unexpected error: %s", _error)
